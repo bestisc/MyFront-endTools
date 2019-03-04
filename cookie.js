@@ -73,7 +73,7 @@ function CookieStorage(maxage,path){
 
 	//获取一个存储全部cookie信息的对象
 	//初始化一个cookie对象
-	var cookie = (function(){
+	var cookieObject = (function(){
 		//初始化要返回的对象
 		var cookieObject = {};	
 
@@ -97,14 +97,84 @@ function CookieStorage(maxage,path){
 			value = decodeURIComponent(value);		//对value值进行解码
 			cookieObject[key] = value;				//将键值对存储到对象中
 		}	
-		//console.log(cookieObject);
+		//返回cookie对象
 		return cookieObject;
 	})();
 
+	this.cookieObject = cookieObject;
+
 	//将所有cookie的键名存储到一个数组中
 	var cookieNameArray = [];
-	for(var key in cookie){
+	for(var key in cookieObject){
 		cookieNameArray.push(key);
 	}
+
+	//定义cookie存储的API的属性和方法
+	
+	//存储的cookie的个数
+	this.length = cookieNameArray.length;
+
+	//返回第n个cookie的名字，如果n越界则返回null
+	this.key = function(n){
+		if(n < 0 || n > cookieNameArray.length) return null;
+		return cookieNameArray[n];
+	}
+
+	//返回指定名字的cookie值，如果不存在则返回null
+	this.getItem = function(name){
+		return cookieObject[name] || null;
+	}
+
+	//存储cookie的值
+	this.setItem = function(key, value){
+		if(!(key in cookieObject)){
+			// 如果要存储的cookie还不存在 
+			cookieNameArray.push(key);	// 将指定的名字加入到存储所有cookie名的数组中 
+			this.length++;	//cookie个数加一
+		}	// 将该名/值对数据存储到cookie对象中
+		cookieObject[key] = value;	//设置cookie
+
+		//将要存储的cookie的值进行编码，同时创建一个"名字=编码后的值"形式的字符串
+		var cookie = key + "=" + encodeURIComponent(value);
+		//将cookie的属性也加入到该字符串中
+		if(maxage) cookie += "; max-age=" + maxage;
+		if(path) cookie += "; path=" + path;
+
+		//通过document.cookie属性来设置cookie
+		document.cookie = cookie;
+	}
+
+	//删除指定cookie
+	this.removeItem = function(key){
+		// 如果cookie不存在，则什么也不做     
+		if(!(key in cookieObject)) return;
+
+		delete cookieObject[key];
+
+		//将cookie中的名字也在内部的数组中删除
+		for(var i = 0; i < cookieNameArray.length; i++){
+			if(cookieNameArray[i]  === key){
+				cookieNameArray.splice(i, 1);
+				break;
+			}
+		}
+
+		this.length--;
+		// 最终通过将该cookie值设置为空字符串以及将有效期设置为0来删除指定的cookie 
+		document.cookie = key + "=; max-age=0";
+	}
+
+	//删除所有cookie
+	this.clear = function(){
+		// 循环所有的cookie的名字，并将cookie删除
+		for(var i = 0; i < cookieNameArray.length; i++){
+			document.cookie = cookieNameArray[i] + "=; max-age=0";
+		}
+
+		// 重置所有的内部状态
+		cookieObject = {};
+		cookieNameArray= [];
+		this.length = 0;
+	} 
 }
 
